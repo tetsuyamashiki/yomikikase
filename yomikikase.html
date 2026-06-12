@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>読み聞かせ担当表 くがにむいの会</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Hiragino Kaku Gothic ProN','ヒラギノ角ゴ ProN','メイリオ',sans-serif;background:#f0f7f0;color:#1a2e1a;height:100dvh;display:flex;flex-direction:column;overflow:hidden;}
+
+.app-header{background:#2E6B3E;color:#fff;padding:10px 16px 0;flex-shrink:0;}
+.header-top{display:flex;align-items:center;gap:8px;padding-bottom:8px;}
+.header-top h1{font-size:14px;font-weight:700;letter-spacing:.04em;flex:1;}
+.header-sub{font-size:10px;opacity:.65;margin-top:-6px;padding-bottom:8px;}
+
+.month-row{display:flex;align-items:center;gap:6px;padding-bottom:10px;}
+.month-row label{font-size:11px;opacity:.7;white-space:nowrap;}
+.month-select{
+  flex:1;background:rgba(255,255,255,.15);color:#fff;
+  border:1px solid rgba(255,255,255,.35);border-radius:8px;
+  padding:6px 10px;font-size:14px;font-weight:700;font-family:inherit;
+  -webkit-appearance:none;appearance:none;text-align:center;
+}
+.month-select option{color:#1a2e1a;background:#fff;}
+
+.main-tabs{display:flex;flex-shrink:0;}
+.main-tab{
+  flex:1;padding:10px 0;font-size:12px;font-weight:700;letter-spacing:.05em;
+  border:none;cursor:pointer;font-family:inherit;
+  background:rgba(255,255,255,.12);color:rgba(255,255,255,.65);
+  transition:background .15s,color .15s;
+}
+.main-tab.active{background:#f0f7f0;color:#2E6B3E;}
+
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.view{display:none;padding:14px 12px 40px;}
+.view.active{display:block;}
+
+/* ── 早見表 ── */
+.hayami-header{text-align:center;margin-bottom:14px;}
+.hayami-date{font-size:22px;font-weight:800;color:#1a3d24;letter-spacing:.04em;}
+.hayami-sub{font-size:11px;color:#888;margin-top:2px;}
+
+.hayami-grid{display:grid;grid-template-columns:48px repeat(3,1fr);gap:4px;}
+.hayami-col-header{
+  background:#2E6B3E;color:#fff;font-size:13px;font-weight:700;
+  text-align:center;padding:10px 4px;border-radius:8px;letter-spacing:.04em;
+}
+.hayami-row-header{
+  background:#3d8c52;color:#fff;font-size:13px;font-weight:800;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:8px;letter-spacing:.04em;padding:4px 2px;
+}
+.hayami-cell{
+  background:#fff;border-radius:10px;border:1.5px solid #c8e6c9;
+  min-height:64px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:6px;cursor:pointer;
+  transition:border-color .15s,background .15s;text-align:center;gap:2px;
+}
+.hayami-cell:active{background:#e8f5e9;}
+.hayami-cell.selected{border-color:#2E6B3E;background:#e8f5e9;}
+.person-name{font-size:14px;font-weight:800;color:#1a3d24;line-height:1.2;word-break:break-all;}
+.empty-label{font-size:11px;color:#ccc;}
+.cell-note{font-size:9px;color:#66a875;margin-top:1px;}
+
+/* ── 過去の絵本パネル ── */
+.book-preview{
+  margin-top:12px;background:#fff;border-radius:14px;
+  border:1.5px solid #c8e6c9;overflow:hidden;display:none;
+}
+.book-preview.visible{display:block;}
+.book-preview-header{
+  background:#e8f5e9;padding:10px 14px;
+  display:flex;align-items:center;gap:8px;
+}
+.book-preview-class{background:#2E6B3E;color:#fff;font-size:13px;font-weight:800;border-radius:6px;padding:3px 10px;}
+.book-preview-title{font-size:12px;color:#2E6B3E;font-weight:700;}
+.book-preview-body{padding:10px 14px;}
+.book-preview-row{display:flex;align-items:flex-start;gap:10px;padding:7px 0;border-bottom:1px solid #f0f7f0;}
+.book-preview-row:last-child{border-bottom:none;}
+.bpr-month{font-size:11px;font-weight:700;color:#3d8c52;min-width:30px;padding-top:2px;flex-shrink:0;}
+.bpr-info{flex:1;display:flex;flex-direction:column;gap:3px;}
+.bpr-name{font-size:13px;font-weight:700;color:#1a3d24;}
+.bpr-book{font-size:14px;color:#1a2e1a;font-weight:600;}
+.bpr-book.empty{color:#ccc;font-weight:400;font-size:12px;}
+
+/* ── 参加可能者リスト（目立たせない） ── */
+.avail-panel{
+  margin-top:12px;background:#f9fbf9;border-radius:10px;
+  border:1px solid #ddeedd;overflow:hidden;
+}
+.avail-panel-header{
+  padding:7px 12px;font-size:11px;font-weight:600;color:#888;
+  display:flex;align-items:center;gap:6px;cursor:pointer;
+  user-select:none;
+}
+.avail-panel-header::after{content:'▶';font-size:9px;margin-left:auto;transition:transform .2s;}
+.avail-panel.open .avail-panel-header::after{transform:rotate(90deg);}
+.avail-panel-body{padding:8px 12px;display:none;}
+.avail-panel.open .avail-panel-body{display:block;}
+.avail-list{display:flex;flex-wrap:wrap;gap:4px;}
+.avail-chip{
+  background:#f0f7f0;border:1px solid #c8e6c9;border-radius:16px;
+  padding:3px 10px;font-size:11px;font-weight:500;color:#3d8c52;
+}
+.avail-chip .chip-note{font-size:9px;color:#88bb99;display:block;text-align:center;}
+.avail-count{font-size:10px;color:#aaa;}
+
+/* ── 絵本記録タブ ── */
+.record-intro{font-size:12px;color:#888;margin-bottom:12px;padding:0 2px;}
+.grade-section{margin-bottom:18px;}
+.grade-label{font-size:11px;font-weight:700;letter-spacing:.12em;color:#2E6B3E;padding:0 4px 6px;border-bottom:1.5px solid #a5d6a7;margin-bottom:8px;}
+.record-card{background:#fff;border-radius:12px;border:1.5px solid #c8e6c9;margin-bottom:8px;overflow:hidden;}
+.record-card-header{background:#f1f8f1;padding:8px 14px;display:flex;align-items:center;gap:8px;border-bottom:1px solid #dcedc8;}
+.record-badge{background:#2E6B3E;color:#fff;font-size:12px;font-weight:800;border-radius:6px;padding:3px 10px;}
+.record-card-body{padding:8px 14px;}
+.record-row{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid #f1f8f1;}
+.record-row:last-child{border-bottom:none;}
+.rr-month{font-size:11px;font-weight:700;color:#3d8c52;min-width:30px;padding-top:2px;flex-shrink:0;}
+.rr-info{flex:1;display:flex;flex-direction:column;gap:3px;}
+.rr-person{font-size:13px;font-weight:700;color:#1a3d24;}
+.rr-book{font-size:14px;color:#1a2e1a;font-weight:600;}
+.rr-book.empty{color:#ccc;font-weight:400;font-size:12px;}
+.no-record{font-size:12px;color:#ccc;padding:4px 0;}
+
+/* ── メンバータブ ── */
+.member-intro{font-size:12px;color:#888;margin-bottom:12px;padding:0 2px;}
+.member-card{
+  background:#fff;border-radius:12px;border:1.5px solid #c8e6c9;
+  margin-bottom:8px;padding:12px 14px;
+  display:flex;align-items:flex-start;gap:10px;
+}
+.member-name{font-size:15px;font-weight:800;color:#1a3d24;margin-bottom:4px;}
+.member-note{font-size:11px;color:#3d8c52;}
+.member-months{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
+.m-chip{
+  font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;
+  background:#e8f5e9;color:#2E6B3E;border:1px solid #a5d6a7;
+}
+.m-chip.absent{background:#f5f5f5;color:#bbb;border-color:#e0e0e0;}
+.member-num{
+  background:#2E6B3E;color:#fff;font-size:12px;font-weight:800;
+  border-radius:50%;width:26px;height:26px;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;margin-top:2px;
+}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="header-top">
+    <h1>📖 読み聞かせ担当表</h1>
+  </div>
+  <p class="header-sub">くがにむいの会</p>
+  <div class="month-row">
+    <label>表示月：</label>
+    <select class="month-select" id="monthSelect" onchange="onMonthChange()"></select>
+  </div>
+  <div class="main-tabs">
+    <button class="main-tab active" onclick="switchView('hayami',this)">早見表</button>
+    <button class="main-tab" onclick="switchView('record',this)">絵本の記録</button>
+    <button class="main-tab" onclick="switchView('member',this)">メンバー</button>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- 早見表 -->
+  <div class="view active" id="view-hayami">
+    <div class="hayami-header">
+      <div class="hayami-date" id="hayamiDate"></div>
+      <div class="hayami-sub">担当者をタップすると過去の読み聞かせを確認できます</div>
+    </div>
+    <div class="hayami-grid" id="hayamiGrid"></div>
+
+    <!-- 過去の絵本パネル -->
+    <div class="book-preview" id="bookPreview">
+      <div class="book-preview-header">
+        <span class="book-preview-class" id="previewClass"></span>
+        <span class="book-preview-title">これまでに読んだ絵本</span>
+      </div>
+      <div class="book-preview-body" id="previewBody"></div>
+    </div>
+
+    <!-- 参加可能メンバー（折りたたみ） -->
+    <div class="avail-panel" id="availPanel">
+      <div class="avail-panel-header" onclick="document.getElementById('availPanel').classList.toggle('open')">
+        <span>参加可能メンバー</span>
+        <span class="avail-count" id="availCount"></span>
+      </div>
+      <div class="avail-panel-body">
+        <div class="avail-list" id="availList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 絵本記録 -->
+  <div class="view" id="view-record">
+    <p class="record-intro">各クラスのこれまでの読み聞かせ記録です。</p>
+    <div id="recordArea"></div>
+  </div>
+
+  <!-- メンバー -->
+  <div class="view" id="view-member">
+    <p class="member-intro">くがにむいの会のメンバー一覧と参加可能月です。</p>
+    <div id="memberArea"></div>
+  </div>
+
+</div>
+
+<script>
+/* ════════════════════════════════════════════
+   メンバーデータ
+════════════════════════════════════════════ */
+const MEMBERS = [
+  { name:"川平 愛子",     avail:["5月","6月","7月","9月","10月","11月","12月","1月","2月","3月"], note:"子供のクラス（1-2・3-1・5-2）のみ" },
+  { name:"眞志喜 徹也",   avail:["5月","6月","7月","9月","10月","11月","12月","1月","2月","3月"], note:"" },
+  { name:"眞志喜 知三",   avail:["5月","6月","7月","9月","10月","11月","12月","1月","2月","3月"], note:"" },
+  { name:"東江 千歳",     avail:["9月","1月"],                                                    note:"2年" },
+  { name:"富名腰 早香",   avail:["5月","6月","7月","9月","10月","11月","12月","1月","2月","3月"], note:"1-3希望" },
+  { name:"末吉 彩乃",     avail:["5月","6月","11月"],                                             note:"1年・3-1希望" },
+  { name:"真志喜 初枝",   avail:["5月","6月","7月","9月","10月","11月","12月","1月","2月","3月"], note:"" },
+  { name:"プリティ宮城ちえ", avail:["5月","6月","7月","9月","10月","11月","12月","1月","2月","3月"], note:"" },
+  { name:"豊島 奈緒子",   avail:["5月","6月","7月","9月","10月","11月","12月","1月","2月","3月"], note:"2-2・5-2希望" },
+  { name:"新城 霞",       avail:["5月","6月"],                                                    note:"1年1組希望" },
+  { name:"三浦 由美子",   avail:["5月","6月","9月","10月","11月","12月","1月","2月","3月"],        note:"" },
+  { name:"桃原 悦子",     avail:["5月","6月","9月","10月","12月","3月"],                           note:"" },
+  { name:"立田 裕美",     avail:["5月","6月","7月","9月","10月","11月","12月","1月","2月","3月"], note:"" },
+  { name:"前田 美恵子",   avail:["5月","6月","10月","11月","12月","1月","2月","3月"],              note:"1-3・低学年希望" },
+  { name:"伊藤 祥子",     avail:["5月","6月","7月","9月","10月","11月","12月","1月","2月","3月"], note:"" },
+  { name:"大嶺自剛 よりたか", avail:["5月","6月"],                                               note:"" },
+  { name:"高江州",        avail:["5月","6月"],                                                    note:"" },
+  { name:"石川 弘美",     avail:["5月","7月","9月","10月","11月","12月","1月","2月","3月"],        note:"" },
+  { name:"藤田 久美子",   avail:["6月"],                                                          note:"3-3希望" },
+  { name:"比嘉司書先生",  avail:[],                                                               note:"4〜6年・高学年希望" },
+  { name:"長嶺 あかね",   avail:[],                                                               note:"1年生・5年生希望" },
+];
+
+/* ════════════════════════════════════════════
+   担当スケジュール（担当者が決まったら入力）
+   形式："月": { date:"〇月〇日（曜）", "学年-組": { name:"担当者名", book:"読んだ絵本" } }
+════════════════════════════════════════════ */
+const SCHEDULE = {
+  "5月": { date: "5月15日（金）",
+    "1-1": { name: "新城 霞",           book: "くれよんのくろくん" },
+    "1-2": { name: "川平 愛子",         book: "さとうねずみのケーキ" },
+    "1-3": { name: "前田 美恵子",       book: "" },
+    "2-1": { name: "眞志喜 初枝",       book: "ぐりとぐら" },
+    "2-2": { name: "伊藤 祥子",         book: "しましまかしてください" },
+    "3-1": { name: "末吉 彩乃",         book: "しばらくあかちゃんになりますので／きみのいいところがみつかるえほん" },
+    "3-2": { name: "桃原 悦子",         book: "いのちのまつり／わたし" },
+    "3-3": { name: "石川 弘美",         book: "カエルのおでかけ" },
+    "4-1": { name: "眞志喜 知三",       book: "あかにんじゃ" },
+    "4-2": { name: "富名腰 早香",       book: "すってんてんぐ" },
+    "4-3": { name: "プリティ宮城ちえ", book: "祖国復帰 自作紙芝居【1972年5月15日は何の日ですか？】" },
+    "5-1": { name: "大嶺自剛 よりたか", book: "うんこ" },
+    "5-2": { name: "豊島 奈緒子",       book: "パンどろぼうとなぞのフランスパン／ふしぎなタネやさん" },
+    "5-3": { name: "立田 裕美",         book: "紙芝居 宝島前編後編" },
+    "6-1": { name: "高江州",             book: "にじいろのさかな" },
+    "6-2": { name: "三浦 由美子",       book: "たいせつなこと／おおきくなるってことは" },
+    "6-3": { name: "眞志喜 徹也",       book: "こんなおおきなかず、みたことある？" },
+  },
+  "6月": { date: "6月12日（金）",
+    "1-1": { name: "教頭先生",           book: "" },
+    "1-2": { name: "前田 美恵子",       book: "もったいないばあさん／いただきます" },
+    "1-3": { name: "富名腰 早香",       book: "" },
+    "2-1": { name: "桃原 悦子",         book: "アベコベさん" },
+    "2-2": { name: "豊島 奈緒子",       book: "チャーシューのおしごと" },
+    "3-1": { name: "末吉 彩乃",         book: "あぶないときは いやです、だめです、いきません" },
+    "3-2": { name: "長嶺 あかね",       book: "リメンバー・ミー" },
+    "3-3": { name: "藤田 久美子",       book: "Brown Bear／あめくんデビュー" },
+    "4-1": { name: "立田 裕美",         book: "おばあちゃんの白い鳥 〜ガザのものがたり〜" },
+    "4-2": { name: "眞志喜 知三",       book: "しずくのぼうけん" },
+    "4-3": { name: "伊藤 祥子",         book: "ともだち" },
+    "5-1": { name: "三浦 由美子",       book: "たいせつなこと／おおきくなるってことは" },
+    "5-2": { name: "比嘉司書先生",     book: "" },
+    "5-3": { name: "真志喜 初枝",       book: "オリジナル紙芝居【伊能忠敬】" },
+    "6-1": { name: "眞志喜 徹也",       book: "" },
+    "6-2": { name: "プリティ宮城ちえ", book: "" },
+    "6-3": { name: "大嶺自剛 よりたか", book: "" },
+  },
+  "7月": { date: "7月10日（金）",
+  },
+  "9月":  { date: "9月18日（金）" },
+  "10月": { date: "10月9日（金）" },
+  "11月": { date: "11月20日（金）" },
+  "12月": { date: "12月11日（金）" },
+  "1月":  { date: "1月15日（金）" },
+  "2月":  { date: "2月19日（金）" },
+  "3月":  { date: "3月12日（金）" },
+};
+
+/* ════════════════════════════════════════════
+   定数
+════════════════════════════════════════════ */
+const GRADES=[1,2,3,4,5,6];
+const CLASSES=[1,2,3];
+const SKIP=['2-3']; // 存在しないクラス
+const MONTHS=['5月','6月','7月','9月','10月','11月','12月','1月','2月','3月'];
+let currentMonth=MONTHS[0];
+let selectedCell=null;
+
+/* 月セレクタ */
+function initMonthSelect(){
+  const sel=document.getElementById('monthSelect');
+  MONTHS.forEach(m=>{
+    const o=document.createElement('option');
+    o.value=m;o.textContent=m;
+    sel.appendChild(o);
+  });
+  sel.value=currentMonth;
+}
+
+function onMonthChange(){
+  currentMonth=document.getElementById('monthSelect').value;
+  selectedCell=null;
+  document.getElementById('bookPreview').classList.remove('visible');
+  buildHayami();
+}
+
+function switchView(id,btn){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.main-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  btn.classList.add('active');
+}
+
+/* ── 早見表 ── */
+function buildHayami(){
+  const monthData=SCHEDULE[currentMonth]||{};
+  const dateStr=monthData.date||currentMonth;
+  document.getElementById('hayamiDate').textContent=dateStr;
+
+  const grid=document.getElementById('hayamiGrid');
+  grid.innerHTML='';
+
+  // 列ヘッダー
+  grid.appendChild(document.createElement('div'));
+  ['1組','2組','3組'].forEach(t=>{
+    const h=document.createElement('div');
+    h.className='hayami-col-header';h.textContent=t;
+    grid.appendChild(h);
+  });
+
+  // データ行
+  GRADES.forEach(g=>{
+    const rh=document.createElement('div');
+    rh.className='hayami-row-header';rh.textContent=`${g}年`;
+    grid.appendChild(rh);
+    CLASSES.forEach(c=>{
+      const key=`${g}-${c}`;
+      if(SKIP.includes(key)){
+        // 存在しないクラスは空白セル
+        const blank=document.createElement('div');
+        blank.style.cssText='background:#f0f7f0;border-radius:10px;min-height:64px;';
+        grid.appendChild(blank);
+        return;
+      }
+      const rec=monthData[key]||{};
+      const cell=document.createElement('div');
+      cell.className='hayami-cell';
+      if(selectedCell===key)cell.classList.add('selected');
+      if(rec.name){
+        const p=document.createElement('div');p.className='person-name';p.textContent=rec.name;
+        cell.appendChild(p);
+        if(rec.book){const b=document.createElement('div');b.className='cell-note';b.textContent='📚 '+rec.book;cell.appendChild(b);}
+      } else {
+        const e=document.createElement('div');e.className='empty-label';e.textContent='未定';
+        cell.appendChild(e);
+      }
+      cell.addEventListener('click',()=>onCellClick(g,c,key,cell));
+      grid.appendChild(cell);
+    });
+  });
+
+  // 参加可能メンバー
+  buildAvailList();
+}
+
+function buildAvailList(){
+  const avail=MEMBERS.filter(m=>m.avail.includes(currentMonth));
+  document.getElementById('availCount').textContent=`${avail.length}名`;
+  const list=document.getElementById('availList');
+  list.innerHTML='';
+  avail.forEach(m=>{
+    const chip=document.createElement('div');chip.className='avail-chip';
+    chip.textContent=m.name;
+    if(m.note){const s=document.createElement('span');s.className='chip-note';s.textContent=m.note;chip.appendChild(s);}
+    list.appendChild(chip);
+  });
+}
+
+function onCellClick(g,c,key,cellEl){
+  if(selectedCell===key){
+    selectedCell=null;cellEl.classList.remove('selected');
+    document.getElementById('bookPreview').classList.remove('visible');
+    return;
+  }
+  document.querySelectorAll('.hayami-cell').forEach(el=>el.classList.remove('selected'));
+  cellEl.classList.add('selected');selectedCell=key;
+  showBookPreview(g,c,key);
+}
+
+function showBookPreview(g,c,key){
+  const preview=document.getElementById('bookPreview');
+  document.getElementById('previewClass').textContent=`${g}年${c}組`;
+  const body=document.getElementById('previewBody');
+  body.innerHTML='';
+  const pastMonths=getPastMonths(currentMonth);
+  const rows=pastMonths.filter(m=>(SCHEDULE[m]||{})[key]);
+  if(rows.length===0){
+    const nd=document.createElement('div');nd.className='no-record';nd.textContent='まだ記録がありません';body.appendChild(nd);
+  } else {
+    rows.forEach(m=>{
+      const r=SCHEDULE[m][key];
+      const row=document.createElement('div');row.className='book-preview-row';
+      const ml=document.createElement('span');ml.className='bpr-month';ml.textContent=m;
+      const info=document.createElement('div');info.className='bpr-info';
+      const nl=document.createElement('div');nl.className='bpr-name';nl.textContent=r.name||'（担当者未記入）';
+      const bl=document.createElement('div');bl.className='bpr-book'+(!r.book?' empty':'');bl.textContent=r.book||'（本のタイトル未記入）';
+      info.appendChild(nl);info.appendChild(bl);
+      row.appendChild(ml);row.appendChild(info);body.appendChild(row);
+    });
+  }
+  preview.classList.add('visible');
+  setTimeout(()=>preview.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+}
+
+/* ── 絵本記録（月選択に関係なく全記録を表示） ── */
+function buildRecord(){
+  const area=document.getElementById('recordArea');
+  area.innerHTML='';
+  const pastMonths=MONTHS.filter(m=>Object.keys(SCHEDULE[m]||{}).filter(k=>k!=='date').length>0);
+  GRADES.forEach(g=>{
+    const sec=document.createElement('div');sec.className='grade-section';
+    const lbl=document.createElement('div');lbl.className='grade-label';lbl.textContent=`${g}年生`;
+    sec.appendChild(lbl);
+    CLASSES.forEach(c=>{
+      const key=`${g}-${c}`;
+      if(SKIP.includes(key))return;
+      const card=document.createElement('div');card.className='record-card';
+      const hdr=document.createElement('div');hdr.className='record-card-header';
+      const badge=document.createElement('span');badge.className='record-badge';badge.textContent=`${g}年${c}組`;
+      hdr.appendChild(badge);card.appendChild(hdr);
+      const body=document.createElement('div');body.className='record-card-body';
+      const rows=pastMonths.filter(m=>(SCHEDULE[m]||{})[key]);
+      if(rows.length===0){
+        const nd=document.createElement('div');nd.className='no-record';nd.textContent='まだ記録がありません';body.appendChild(nd);
+      } else {
+        rows.forEach(m=>{
+          const r=SCHEDULE[m][key];
+          const row=document.createElement('div');row.className='record-row';
+          const ml=document.createElement('span');ml.className='rr-month';ml.textContent=m;
+          const info=document.createElement('div');info.className='rr-info';
+          const pl=document.createElement('div');pl.className='rr-person';pl.textContent=r.name||'（担当者未記入）';
+          const bl=document.createElement('div');bl.className='rr-book'+(!r.book?' empty':'');bl.textContent=r.book||'（本のタイトル未記入）';
+          info.appendChild(pl);info.appendChild(bl);
+          row.appendChild(ml);row.appendChild(info);body.appendChild(row);
+        });
+      }
+      card.appendChild(body);sec.appendChild(card);
+    });
+    area.appendChild(sec);
+  });
+}
+
+/* ── メンバー一覧 ── */
+function buildMember(){
+  const area=document.getElementById('memberArea');
+  area.innerHTML='';
+  MEMBERS.forEach((m,i)=>{
+    const card=document.createElement('div');card.className='member-card';
+    const num=document.createElement('div');num.className='member-num';num.textContent=i+1;
+    const info=document.createElement('div');info.style.flex='1';
+    const name=document.createElement('div');name.className='member-name';name.textContent=m.name;
+    info.appendChild(name);
+    if(m.note){const n=document.createElement('div');n.className='member-note';n.textContent='💬 '+m.note;info.appendChild(n);}
+    const chips=document.createElement('div');chips.className='member-months';
+    MONTHS.forEach(mo=>{
+      const ch=document.createElement('span');
+      ch.className='m-chip'+(m.avail.includes(mo)?'':' absent');
+      ch.textContent=mo;
+      chips.appendChild(ch);
+    });
+    info.appendChild(chips);
+    card.appendChild(num);card.appendChild(info);
+    area.appendChild(card);
+  });
+}
+
+function getPastMonths(current){
+  const idx=MONTHS.indexOf(current);
+  return MONTHS.slice(0,idx).filter(m=>Object.keys(SCHEDULE[m]||{}).filter(k=>k!=='date').length>0);
+}
+
+initMonthSelect();
+buildHayami();
+buildRecord();
+buildMember();
+</script>
+</body>
+</html>
